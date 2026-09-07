@@ -1,6 +1,6 @@
 # Business Analyst (BA) Command Center (v3.0 Pro)
 
-> ⚠️ **MOCK MODE ACTIVE** — This project is currently running with simulated AI responses.
+> ⚠️ **MOCK MODE ACTIVE** 
 > All features (auth, file storage, database, RBAC, UI) are **fully functional**.
 > To enable real Claude AI responses, set `MOCK_MODE=false` and add your real `ANTHROPIC_API_KEY` to `.env`.
 > No code changes required — it's a single env var switch.
