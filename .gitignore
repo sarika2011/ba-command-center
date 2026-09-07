@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+ENV/
+
+# Database & Storage
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables & secrets
+.env
+.env.local
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Output exports & temp logs
+exports/
+temp/
+logs/
+
+# Runtime output folders (BA agent results — generated at runtime, not source)
+Requirements/
+Meetings/
+Jira_Tickets/
+Gap_Analysis/
+Action_Items/
+Test_Cases/
+Meeting_Minutes/
+Process_Models/
+Business_Cases/
+Risk_Logs/
+Domain_Glossaries/
+
+# Test artifacts
+test_all_agents.py
+
+.vercel

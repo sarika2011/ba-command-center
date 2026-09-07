@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Business Analyst Command Center — AI-powered BA workflow assistant with requirement extraction, meeting prep, JIRA drafting, gap analysis, and action tracking.">
+    <title>BA Command Center — Business Analyst Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=3.1.0">
+    <style>
+        /* Critical Brand & Header Fix: Prevent any text wrapping or vertical overflow clipping */
+        .topbar {
+            height: 56px !important;
+            padding: 0 16px !important;
+        }
+        .topbar-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            flex-shrink: 0 !important;
+            min-width: max-content !important;
+        }
+        .brand-group {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+        }
+        .logo-mark {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
+            line-height: 0 !important;
+        }
+        .logo-mark svg {
+            display: block !important;
+            width: 24px !important;
+            height: 24px !important;
+            flex-shrink: 0 !important;
+        }
+        .logo-text {
+            font-weight: 700 !important;
+            font-size: 0.95rem !important;
+            letter-spacing: -0.02em !important;
+            white-space: nowrap !important;
+            line-height: 1.2 !important;
+            display: inline-block !important;
+            flex-shrink: 0 !important;
+            color: var(--text-primary) !important;
+        }
+        .version-badge {
+            font-size: 0.62rem !important;
+            background: var(--accent-soft) !important;
+            color: var(--accent) !important;
+            padding: 2px 8px !important;
+            border-radius: 20px !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            line-height: 1.2 !important;
+            flex-shrink: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            border: 1px solid rgba(129,140,248,0.25) !important;
+            margin-left: 2px !important;
+        }
+        .project-selector-wrapper {
+            margin-left: 6px !important;
+        }
+        .project-dropdown {
+            max-width: 220px !important;
+            font-size: 0.78rem !important;
+            padding: 5px 10px !important;
+        }
+        @media (max-width: 1280px) {
+            .project-dropdown { max-width: 160px !important; }
+            .topbar-btn { padding: 6px 8px !important; font-size: 0.76rem !important; }
+        }
+        @media (max-width: 1120px) {
+            .project-selector-wrapper { display: none !important; }
+            .topbar-btn span { display: none !important; }
+            .topbar-btn { padding: 7px !important; }
+        }
+        @media (max-width: 900px) {
+            .sidebar-toggle { display: block !important; }
+        }
+        @media (max-width: 640px) {
+            .session-indicator { display: none !important; }
+            .version-badge { display: none !important; }
+            .logo-text { font-size: 0.88rem !important; }
+            .topbar { padding: 0 10px !important; gap: 8px !important; }
+            .topbar-left { gap: 8px !important; }
+            .topbar-right { gap: 4px !important; }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <!-- Auth Overlay -->
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-card glass-panel">
+            <div class="logo-mark" style="justify-content:center; margin-bottom: 20px;">
+                <svg width="40" height="40" viewBox="0 0 28 28" fill="none">
+                    <rect x="2" y="2" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.9"/>
+                    <rect x="16" y="2" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.6"/>
+                    <rect x="2" y="16" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.6"/>
+                    <rect x="16" y="16" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.3"/>
+                </svg>
+            </div>
+            <h2 style="text-align:center; margin-bottom: 20px;">BA Command Center</h2>
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login">Login</button>
+                <button class="auth-tab" id="tab-register">Register</button>
+            </div>
+            <form id="auth-form">
+                <div class="field-group">
+                    <label>Username</label>
+                    <input type="text" id="auth-username" required>
+                </div>
+                <div class="field-group" style="margin-top: 10px;">
+                    <label>Password</label>
+                    <input type="password" id="auth-password" required>
+                </div>
+                <button type="submit" class="btn-process" style="width: 100%; justify-content: center; margin-top: 20px;" id="btn-auth-submit">
+                    Login
+                </button>
+            </form>
+            <div class="demo-logins-container">
+                <div class="demo-logins-header">
+                    <span class="demo-logins-title">⚡ Quick Demo Login</span>
+                    <span class="tag tag-blue" style="font-size: 0.65rem; padding: 2px 6px;">Click to Autofill</span>
+                </div>
+                <div class="demo-btn-grid">
+                    <button type="button" class="demo-login-chip" id="btn-demo-user" title="Autofill standard analyst login">
+                        <span class="demo-role-badge">👤 Standard</span>
+                        <span class="demo-cred-preview">analyst / demo123</span>
+                    </button>
+                    <button type="button" class="demo-login-chip" id="btn-demo-admin" title="Autofill admin login">
+                        <span class="demo-role-badge admin-badge">🔑 Admin</span>
+                        <span class="demo-cred-preview">admin / admin123</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient background effects -->
+    <div class="ambient-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <nav class="topbar" id="topbar">
+        <div class="topbar-left">
+            <button class="sidebar-toggle" id="btn-sidebar-toggle" title="Toggle sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="brand-group" style="display:inline-flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap;">
+                <div class="logo-mark" style="display:flex;align-items:center;flex-shrink:0;">
+                    <svg width="24" height="24" viewBox="0 0 28 28" fill="none" style="flex-shrink:0;">
+                        <rect x="2" y="2" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.9"/>
+                        <rect x="16" y="2" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.6"/>
+                        <rect x="2" y="16" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.6"/>
+                        <rect x="16" y="16" width="10" height="10" rx="2" fill="url(#g1)" opacity="0.3"/>
+                        <defs><linearGradient id="g1" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#818cf8"/><stop offset="1" stop-color="#6366f1"/></linearGradient></defs>
+                    </svg>
+                </div>
+                <span class="logo-text" style="font-weight:700;font-size:0.95rem;letter-spacing:-0.02em;white-space:nowrap;line-height:1.2;flex-shrink:0;display:inline-block;">BA Command Center</span>
+                <span class="version-badge" style="font-size:0.62rem;background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap;line-height:1.2;flex-shrink:0;display:inline-flex;align-items:center;border:1px solid rgba(129,140,248,0.25);margin-left:2px;">v3.0 Pro</span>
+            </div>
+            <div class="project-selector-wrapper">
+                <select id="project-selector" class="project-dropdown">
+                    <option value="alpha">📁 Project Alpha (Digital Transformation)</option>
+                    <option value="ecommerce">📁 E-Commerce Redesign Q3</option>
+                    <option value="core-api">📁 Core Platform API</option>
+                </select>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <button class="topbar-btn" id="btn-command-palette" title="Cmd+K Command Palette">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span>Cmd+K</span>
+            </button>
+            <button class="topbar-btn" id="btn-rtm" title="Requirements Traceability Matrix">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="14" cy="12" r="2" fill="currentColor"/><circle cx="10" cy="18" r="2" fill="currentColor"/></svg>
+                <span>RTM Matrix</span>
+            </button>
+            <button class="topbar-btn" id="btn-keys" title="Manage API Keys">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 11h2v2H7zM11 11h6v2h-6z"/></svg>
+                <span>Keys</span>
+            </button>
+            <button class="topbar-btn admin-only-btn hidden" id="btn-admin-workspaces" title="Admin: Browse All Users' Workspaces">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                <span>All Workspaces</span>
+            </button>
+            <button class="topbar-btn" id="btn-files" title="Saved Files Browser">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                <span>Files</span>
+            </button>
+            <button class="topbar-btn" id="btn-history" title="Session History">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>History</span>
+            </button>
+            <button class="topbar-btn" id="btn-export-all" title="Export All Outputs">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export All</span>
+            </button>
+            <button class="topbar-btn theme-toggle" id="btn-theme" title="Toggle theme">
+                <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <svg class="icon-moon hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
+            </button>
+            <div class="user-role-badge" id="user-profile-badge" title="Logged-in User and Role">
+                <span class="user-role-name" id="user-profile-name">analyst</span>
+                <span class="user-role-tag tag-analyst" id="user-profile-role">Analyst</span>
+            </div>
+            <button class="topbar-btn" id="btn-logout" title="Logout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span>Logout</span>
+            </button>
+            <div class="session-indicator" id="items-badge">
+                <div class="pulse-dot"></div>
+                <span id="session-count">0 items</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Layout -->
+    <main class="app-layout">
+        <!-- Sidebar: Agent Selector -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-section-label">REQUIREMENTS & TICKETS</div>
+            <button class="agent-card active" data-agent="auto" id="agent-auto">
+                <div class="agent-icon agent-icon-auto">⚡</div>
+                <div class="agent-info"><span class="agent-name">Auto-Detect</span><span class="agent-desc">Smart routing</span></div>
+            </button>
+            <button class="agent-card" data-agent="requirements" id="agent-requirements">
+                <div class="agent-icon agent-icon-req">📋</div>
+                <div class="agent-info"><span class="agent-name">Requirements</span><span class="agent-desc">Clarify & Gherkin</span></div>
+            </button>
+            <button class="agent-card" data-agent="jira" id="agent-jira">
+                <div class="agent-icon agent-icon-jira">🎫</div>
+                <div class="agent-info"><span class="agent-name">JIRA Drafter</span><span class="agent-desc">Ticket creation</span></div>
+            </button>
+            <button class="agent-card" data-agent="gap-analysis" id="agent-gap-analysis">
+                <div class="agent-icon agent-icon-gap">🔍</div>
+                <div class="agent-info"><span class="agent-name">Gap Analysis</span><span class="agent-desc">As-Is vs To-Be</span></div>
+            </button>
+            <button class="agent-card" data-agent="test-cases" id="agent-test-cases">
+                <div class="agent-icon">🧪</div>
+                <div class="agent-info"><span class="agent-name">Test Cases</span><span class="agent-desc">QA Test Suite</span></div>
+            </button>
+
+            <div class="sidebar-section-label" style="margin-top:10px;">MEETINGS & COLLABORATION</div>
+            <button class="agent-card" data-agent="meeting-prep" id="agent-meeting-prep">
+                <div class="agent-icon agent-icon-meet">📅</div>
+                <div class="agent-info"><span class="agent-name">Meeting Prep</span><span class="agent-desc">Agenda & questions</span></div>
+            </button>
+            <button class="agent-card" data-agent="minutes" id="agent-minutes">
+                <div class="agent-icon">🎙️</div>
+                <div class="agent-info"><span class="agent-name">Meeting Minutes</span><span class="agent-desc">Executive summary</span></div>
+            </button>
+            <button class="agent-card" data-agent="action-items" id="agent-action-items">
+                <div class="agent-icon agent-icon-action">🎯</div>
+                <div class="agent-info"><span class="agent-name">Action Items</span><span class="agent-desc">Notes → Tasks</span></div>
+            </button>
+
+            <div class="sidebar-section-label" style="margin-top:10px;">STRATEGY & ARCHITECTURE</div>
+            <button class="agent-card" data-agent="process-model" id="agent-process-model">
+                <div class="agent-icon">🔄</div>
+                <div class="agent-info"><span class="agent-name">Process Modeler</span><span class="agent-desc">BPMN & Flowchart</span></div>
+            </button>
+            <button class="agent-card" data-agent="business-case" id="agent-business-case">
+                <div class="agent-icon">💰</div>
+                <div class="agent-info"><span class="agent-name">Business Case</span><span class="agent-desc">ROI & Payback</span></div>
+            </button>
+            <button class="agent-card" data-agent="risk-log" id="agent-risk-log">
+                <div class="agent-icon">⚠️</div>
+                <div class="agent-info"><span class="agent-name">Risk Log (RAID)</span><span class="agent-desc">Risk scoring</span></div>
+            </button>
+            <button class="agent-card" data-agent="glossary" id="agent-glossary">
+                <div class="agent-icon">📖</div>
+                <div class="agent-info"><span class="agent-name">Data Glossary</span><span class="agent-desc">Domain dictionary</span></div>
+            </button>
+
+            <div class="sidebar-section-label" style="margin-top: 14px;">QUICK STATS</div>
+            <div class="stats-grid">
+                <div class="stat-item"><span class="stat-value" id="stat-req">0</span><span class="stat-label">Reqs</span></div>
+                <div class="stat-item"><span class="stat-value" id="stat-tickets">0</span><span class="stat-label">Tickets</span></div>
+                <div class="stat-item"><span class="stat-value" id="stat-meetings">0</span><span class="stat-label">Meetings</span></div>
+                <div class="stat-item"><span class="stat-value" id="stat-actions">0</span><span class="stat-label">Actions</span></div>
+            </div>
+            <div class="sidebar-section-label" style="margin-top:10px;">API STATUS</div>
+            <div class="api-status" id="api-status">
+                <div class="status-dot status-checking"></div>
+                <span>Checking...</span>
+            </div>
+        </aside>
+
+        <!-- Center: Input + Output -->
+        <section class="workspace" id="workspace">
+            <!-- Agent Header -->
+            <div class="workspace-header" id="workspace-header">
+                <div class="ws-header-left">
+                    <h1 id="ws-title">Auto-Detect Mode</h1>
+                    <p id="ws-subtitle">Paste your input and I'll route it to the right agent automatically.</p>
+                </div>
+                <div class="ws-header-right">
+                    <div class="mode-chip" id="mode-chip">
+                        <div class="mode-dot"></div>
+                        <span>Smart Routing</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Zone -->
+            <div class="input-zone" id="input-zone">
+                <div class="input-container glass-panel">
+                    <div class="input-toolbar">
+                        <span class="input-label">INPUT</span>
+                        <div class="input-actions">
+                            <label class="icon-btn" id="btn-upload" title="Upload .txt or .docx file">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <input type="file" id="file-upload" accept=".txt,.docx,.md" style="display:none">
+                            </label>
+                            <button class="icon-btn" id="btn-paste" title="Paste from clipboard">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            </button>
+                            <button class="icon-btn" id="btn-clear" title="Clear input">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="main-input" placeholder="Paste raw client notes, meeting transcripts, feature descriptions, or any BA-related text here...
+
+Examples:
+• Messy client notes → Requirements Clarifier
+• &quot;I have a client meeting tomorrow about X&quot; → Meeting Prep
+• Feature description → JIRA Ticket Drafter
+• Meeting notes → Action Items Extractor" rows="8"></textarea>
+
+                    <!-- Secondary input for Gap Analysis -->
+                    <div class="secondary-input-wrapper hidden" id="secondary-input-wrapper">
+                        <div class="input-toolbar">
+                            <span class="input-label">TO-BE REQUIREMENTS (Second Document)</span>
+                        </div>
+                        <textarea id="secondary-input" placeholder="Paste the To-Be requirements or desired state document here..." rows="6"></textarea>
+                    </div>
+
+                    <!-- Meeting Prep Extra Fields -->
+                    <div class="meeting-fields hidden" id="meeting-fields">
+                        <div class="field-row">
+                            <div class="field-group">
+                                <label for="meeting-topic">Meeting Topic</label>
+                                <input type="text" id="meeting-topic" placeholder="e.g., Q3 Product Roadmap Review">
+                            </div>
+                            <div class="field-group">
+                                <label for="meeting-attendees">Attendees (comma-separated)</label>
+                                <input type="text" id="meeting-attendees" placeholder="e.g., John (PM), Sarah (Dev Lead), Mike (QA)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-footer">
+                        <div class="char-count"><span id="char-count">0</span> characters</div>
+                        <button class="btn-process" id="btn-process">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            <span>Process</span>
+                            <kbd class="kbd-hint">Ctrl+↵</kbd>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing Animation -->
+            <div class="processing-overlay hidden" id="processing-overlay">
+                <div class="processing-card glass-panel">
+                    <div class="processing-spinner">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p class="processing-text" id="processing-text">Analyzing input...</p>
+                    <div class="processing-steps">
+                        <div class="step" id="step-detect"><div class="step-dot"></div><span>Detecting intent</span></div>
+                        <div class="step" id="step-route"><div class="step-dot"></div><span>Routing to agent</span></div>
+                        <div class="step" id="step-process"><div class="step-dot"></div><span>Calling AI model</span></div>
+                        <div class="step" id="step-render"><div class="step-dot"></div><span>Rendering output</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Skeleton -->
+            <div class="skeleton-zone hidden" id="skeleton-zone">
+                <div class="glass-panel skeleton-panel">
+                    <div class="skeleton-line skeleton-title"></div>
+                    <div class="skeleton-line skeleton-short"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line skeleton-short"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line skeleton-short"></div>
+                </div>
+            </div>
+
+            <!-- Output Zone -->
+            <div class="output-zone hidden" id="output-zone">
+                <div class="output-header">
+                    <div class="output-header-left">
+                        <div class="agent-badge" id="output-agent-badge"><span id="output-agent-name">Requirements Clarifier</span></div>
+                        <span class="output-timestamp" id="output-timestamp"></span>
+                        <span class="save-indicator hidden" id="save-indicator">✓ Auto-saved</span>
+                    </div>
+                    <div class="output-actions">
+                        <button class="btn-sm" id="btn-copy-output" title="Copy to clipboard">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            Copy
+                        </button>
+                        <div class="export-dropdown">
+                            <button class="btn-sm" id="btn-export">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Export
+                            </button>
+                            <div class="dropdown-menu hidden" id="export-menu">
+                                <button class="dropdown-item" data-format="md">.md — Markdown</button>
+                                <button class="dropdown-item" data-format="json">.json — JSON</button>
+                                <button class="dropdown-item" data-format="txt">.txt — Plain Text</button>
+                                <button class="dropdown-item" data-format="jira-csv">.csv — JIRA Import CSV</button>
+                            </div>
+                        </div>
+                        <button class="btn-sm btn-new" id="btn-new-input">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New
+                        </button>
+                    </div>
+                </div>
+                <div class="output-content glass-panel" id="output-content">
+                    <!-- Dynamic output rendered here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: History -->
+        <aside class="history-panel hidden" id="history-panel">
+            <div class="history-header">
+                <h3>Session History</h3>
+                <button class="icon-btn" id="btn-close-history">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="history-search">
+                <input type="text" id="history-search-input" placeholder="Search history...">
+            </div>
+            <div class="history-list" id="history-list">
+                <div class="history-empty">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <p>No items yet. Process some input to get started.</p>
+                </div>
+            </div>
+            <div class="history-footer">
+                <button class="btn-sm btn-danger" id="btn-clear-history">Clear All History</button>
+            </div>
+        </aside>
+
+        <!-- Right Panel: File Browser -->
+        <aside class="files-panel hidden" id="files-panel">
+            <div class="history-header">
+                <h3 id="files-panel-title">Saved Files</h3>
+                <button class="icon-btn" id="btn-close-files">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <!-- Admin Workspace Scope Switcher -->
+            <div class="workspace-scope-tabs hidden" id="workspace-scope-tabs">
+                <button class="scope-tab active" id="tab-scope-my" data-scope="my">My Workspace</button>
+                <button class="scope-tab" id="tab-scope-all" data-scope="all">🌐 All Workspaces</button>
+            </div>
+            <div class="files-list" id="files-list">
+                <div class="history-empty"><p>Loading files...</p></div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- API Keys Modal -->
+    <div class="modal-overlay hidden" id="keys-modal">
+        <div class="modal-card glass-panel" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>API Key Manager</h3>
+                <button class="icon-btn" id="btn-close-keys">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div style="margin-top: 15px;">
+                <div class="field-group">
+                    <label style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>Anthropic API Key</span>
+                        <span class="tag tag-yellow" id="keys-status-tag">Mock Mode Active</span>
+                    </label>
+                    <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="margin-top: 6px; width: 100%;">
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">
+                        Leave blank to run in built-in <strong>Mock Mode</strong> (no API key required). Enter your Anthropic key to use live Claude Sonnet 3.6 AI models.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                    <button class="btn-sm" id="btn-test-key">Test Key</button>
+                    <button class="btn-process" id="btn-save-key" style="padding: 8px 16px;">Save Key</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal-overlay hidden" id="shortcuts-modal">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="icon-btn" id="btn-close-shortcuts">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="shortcuts-grid">
+                <div class="shortcut-row"><kbd>Ctrl</kbd> + <kbd>Enter</kbd><span>Process input</span></div>
+                <div class="shortcut-row"><kbd>Ctrl</kbd> + <kbd>H</kbd><span>Toggle history</span></div>
+                <div class="shortcut-row"><kbd>Ctrl</kbd> + <kbd>B</kbd><span>Toggle sidebar</span></div>
+                <div class="shortcut-row"><kbd>Ctrl</kbd> + <kbd>D</kbd><span>Toggle theme</span></div>
+                <div class="shortcut-row"><kbd>Esc</kbd><span>Close panels / New input</span></div>
+                <div class="shortcut-row"><kbd>1</kbd>-<kbd>6</kbd><span>Select agent (when input unfocused)</span></div>
+                <div class="shortcut-row"><kbd>Ctrl</kbd> + <kbd>K</kbd><span>Command Palette</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Command Palette (Cmd+K) Modal -->
+    <div class="modal-overlay hidden" id="command-palette-modal">
+        <div class="modal-card glass-panel" style="max-width: 600px; padding: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="command-palette-input" placeholder="Type a command or jump to agent (e.g., 'Requirements', 'JIRA', 'RTM')..." style="width: 100%; background: transparent; border: none; outline: none; font-size: 1rem; color: var(--text-color);">
+                <button class="icon-btn" id="btn-close-command-palette">✕</button>
+            </div>
+            <div class="command-results" id="command-results" style="max-height: 320px; overflow-y: auto; margin-top: 10px;">
+                <!-- Populated dynamically by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- RTM Traceability Matrix Modal -->
+    <div class="modal-overlay hidden" id="rtm-modal">
+        <div class="modal-card glass-panel" style="max-width: 950px; width: 92%;">
+            <div class="modal-header">
+                <div>
+                    <h3>Requirements Traceability Matrix (RTM)</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">End-to-end trace: Business Need → User Story → JIRA Ticket → QA Test Suite → Risks & Decisions</p>
+                </div>
+                <button class="icon-btn" id="btn-close-rtm">✕</button>
+            </div>
+            <div style="margin-top: 15px; max-height: 450px; overflow-y: auto;">
+                <table class="data-table" id="rtm-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Req ID</th>
+                            <th>User Story</th>
+                            <th>Priority</th>
+                            <th>JIRA Ticket</th>
+                            <th>Test Cases</th>
+                            <th>Risks / Decisions</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rtm-tbody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <button class="btn-sm" id="btn-lock-baseline">🔒 Lock Approved Baseline</button>
+                <button class="btn-process" id="btn-export-rtm" style="padding: 6px 14px;">Export RTM (.csv)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="agents.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
