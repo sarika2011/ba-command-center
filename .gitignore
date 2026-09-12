@@ -65,3 +65,6 @@ Domain_Glossaries/
 test_all_agents.py
 
 .vercel
+
+.vercel
+.env*
