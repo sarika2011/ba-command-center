@@ -12,10 +12,26 @@ ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 LLM_MODEL: str = os.getenv("LLM_MODEL", "claude-sonnet-4-6")
 LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "4096"))
 
+def _is_api_key_valid(key: str) -> bool:
+    if not key or not key.strip():
+        return False
+    k = key.strip().lower()
+    if k in ("mock_mode", "mock", "your-real-key-here", "none", "null", "false"):
+        return False
+    if k.startswith("your_") or k.startswith("your-") or len(k) < 15:
+        return False
+    return True
+
 # ── Mock Mode Toggle ─────────────────────────────────────────────────
-# Set MOCK_MODE=true in .env to run without a real Anthropic API key.
-# Switch to real Claude: set MOCK_MODE=false and provide a real ANTHROPIC_API_KEY.
-MOCK_MODE: bool = os.getenv("MOCK_MODE", "false").lower() in ("true", "1", "yes")
+# Automatically activate Mock Mode if ANTHROPIC_API_KEY is missing/placeholder.
+# Real Claude is activated when a genuine key (e.g. sk-ant-...) is provided.
+_env_mock = os.getenv("MOCK_MODE", "").lower()
+if _env_mock in ("true", "1", "yes"):
+    MOCK_MODE: bool = True
+elif _env_mock in ("false", "0", "no"):
+    MOCK_MODE: bool = not _is_api_key_valid(ANTHROPIC_API_KEY)
+else:
+    MOCK_MODE: bool = not _is_api_key_valid(ANTHROPIC_API_KEY)
 
 # ── Auth Settings ────────────────────────────────────────────────────
 JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me-in-production")

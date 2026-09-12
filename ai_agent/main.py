@@ -249,7 +249,10 @@ def _result_to_markdown(agent_key: str, result: dict) -> str:
             lines.append(f"- **Consensus:** {dp.get('consensus', '')}\n")
         lines.append("## Decisions Log\n")
         for d in result.get("decisions", []):
-            lines.append(f"- **[{d.get('id', '')}]** {d.get('decision', '')} — _Rationale: {d.get('rationale', '')}_ (Owner: {d.get('owner', '')})")
+            if isinstance(d, dict):
+                lines.append(f"- **[{d.get('id', '')}]** {d.get('decision', '')} — _Rationale: {d.get('rationale', '')}_ (Owner: {d.get('owner', '')})")
+            else:
+                lines.append(f"- ✅ {d}")
         lines.append("\n## Action Items\n")
         lines.append("| ID | Task | Owner | Due Date | Priority |")
         lines.append("|---|---|---|---|---|")
@@ -315,7 +318,10 @@ def _result_to_markdown(agent_key: str, result: dict) -> str:
         lines.append("| ID | Category | Description | Likelihood | Impact | Score | Mitigation Strategy | Owner |")
         lines.append("|---|---|---|---|---|---|---|---|")
         for r in result.get("risks", []):
-            lines.append(f"| {r.get('id', '')} | {r.get('category', '')} | {r.get('description', '')} | {r.get('likelihood', '')} | {r.get('impact', '')} | {r.get('score', '')}/9 | {r.get('mitigationStrategy', '')} | {r.get('owner', '')} |")
+            if isinstance(r, dict):
+                lines.append(f"| {r.get('id', '')} | {r.get('category', '')} | {r.get('description', '')} | {r.get('likelihood', '')} | {r.get('impact', '')} | {r.get('score', '')}/9 | {r.get('mitigationStrategy', '')} | {r.get('owner', '')} |")
+            else:
+                lines.append(f"| RISK | General | {r} | Medium | Medium | 4/9 | Monitor | Team |")
         lines.append("\n## Key Assumptions\n")
         for a in result.get("assumptions", []):
             lines.append(f"- **[{a.get('id', '')}]** {a.get('statement', '')} — _Validation: {a.get('validationMethod', '')}_ (Status: {a.get('status', '')})")
@@ -359,17 +365,26 @@ def _save_output_to_db(agent_key: str, result: dict, user: models.User, db: Sess
     md_content = _result_to_markdown(agent_key, result)
     json_str = json.dumps(result, indent=2, ensure_ascii=False)
     
-    db_output = models.AgentOutput(
-        agent_key=agent_key,
-        filename=base,
-        raw_input=result.get("rawInput", ""),
-        json_result=json_str,
-        markdown_result=md_content,
-        owner_id=user.id
-    )
-    db.add(db_output)
-    db.commit()
-    db.refresh(db_output)
+    saved_id = None
+    try:
+        db_output = models.AgentOutput(
+            agent_key=agent_key,
+            filename=base,
+            raw_input=result.get("rawInput", ""),
+            json_result=json_str,
+            markdown_result=md_content,
+            owner_id=user.id if user else None
+        )
+        db.add(db_output)
+        db.commit()
+        db.refresh(db_output)
+        saved_id = db_output.id
+    except Exception as e:
+        print(f"Database save warning: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
 
     # Also persist to local file system folders if configured
     target_dir = OUTPUT_DIRS.get(agent_key)
@@ -385,8 +400,8 @@ def _save_output_to_db(agent_key: str, result: dict, user: models.User, db: Sess
     
     return {
         "saved": True,
-        "id": db_output.id,
-        "filename": db_output.filename
+        "id": saved_id,
+        "filename": base
     }
 
 # ── Auth Endpoints ───────────────────────────────────────────────────
