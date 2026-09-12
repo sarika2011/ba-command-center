@@ -742,12 +742,23 @@
       if (agent === 'auto') {
         setStep('step-detect', 'active');
         $('processing-text').textContent = 'Detecting intent...';
-        const detectRes = await fetch(`${API_BASE}/detect-intent`, {
+        let detectEndpoint = agentMeta['auto']?.endpoint || '/detect-intent';
+        if (detectEndpoint.startsWith('/api/')) {
+          detectEndpoint = detectEndpoint.replace(/^\/api/, '');
+        }
+        const detectRes = await fetch(`${API_BASE}${detectEndpoint}`, {
           method: 'POST', headers: getHeaders(),
           body: JSON.stringify({ text })
         });
         if (detectRes.status === 401) return handleUnauthorized();
-        if (!detectRes.ok) throw new Error('Intent detection failed');
+        if (!detectRes.ok) {
+          let errDetail = '';
+          try {
+            const errData = await detectRes.json();
+            errDetail = errData.detail || errData.message || '';
+          } catch {}
+          throw new Error(errDetail ? `Intent detection failed: ${errDetail}` : 'Intent detection failed');
+        }
         intentData = await detectRes.json();
         agent = intentData.agent || 'requirements';
         autoDetected = true;
@@ -768,13 +779,30 @@
         if (!payload.to_be) throw new Error('Gap Analysis requires To-Be (Second Document) text.');
       }
 
-      const res = await fetch(`${API_BASE}${agentMeta[agent].endpoint}`, {
+      let agentEndpoint = agentMeta[agent]?.endpoint || `/${agent}`;
+      if (agentEndpoint.startsWith('/api/')) {
+        agentEndpoint = agentEndpoint.replace(/^\/api/, '');
+      }
+
+      const res = await fetch(`${API_BASE}${agentEndpoint}`, {
         method: 'POST', headers: getHeaders(),
         body: JSON.stringify(payload)
       });
 
       if (res.status === 401) return handleUnauthorized();
-      if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+      if (!res.ok) {
+        let errMsg = '';
+        try {
+          const errData = await res.json();
+          errMsg = errData.detail || errData.message || (typeof errData === 'string' ? errData : JSON.stringify(errData));
+        } catch {
+          try {
+            errMsg = await res.text();
+          } catch {}
+        }
+        const statusInfo = res.statusText ? `${res.status} ${res.statusText}` : `${res.status}`;
+        throw new Error(errMsg ? `API Error (${statusInfo}): ${errMsg}` : `API Error (${statusInfo})`);
+      }
       const result = await res.json();
 
       if (intentData) result._intentData = intentData;

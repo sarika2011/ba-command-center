@@ -91,6 +91,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Path Normalization Middleware ────────────────────────────────────
+@app.middleware("http")
+async def fix_duplicate_api_prefix(request, call_next):
+    """Normalize paths that accidentally include duplicate /api prefixes like /api/api/..."""
+    if request.scope.get("path", "").startswith("/api/api/"):
+        request.scope["path"] = request.scope["path"].replace("/api/api/", "/api/", 1)
+    return await call_next(request)
+
 
 # ── Request Models ───────────────────────────────────────────────────
 class UserCreate(BaseModel):
